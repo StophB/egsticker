@@ -4,11 +4,12 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-include_once(dirname(__FILE__) . '/classes/EgStickerClass.php');
+include_once(dirname(__FILE__).'/classes/EgStickerClass.php');
 
 class EgSticker extends Module
 {
     protected $domain;
+    protected $imgPath;
 
     public function __construct()
     {
@@ -30,15 +31,88 @@ class EgSticker extends Module
             'min' => '1.7',
             'max' => _PS_VERSION_
         ];
+
+        $this->imgPath = $this->_path . 'views/img/';
+    }
+
+    public function createTabs()
+    {
+        $idParent = (int) Tab::getIdFromClassName('AdminEgDigital');
+        if (empty($idParent)) {
+            $parent_tab = new Tab();
+            $parent_tab->name = array();
+            foreach (Language::getLanguages(true) as $lang) {
+                $parent_tab->name[$lang['id_lang']] = $this->trans('Modules EGIO', array(), $this->domain);
+            }
+            $parent_tab->class_name = 'AdminEgDigital';
+            $parent_tab->id_parent = 0;
+            $parent_tab->module = $this->name;
+            $parent_tab->icon = 'library_books';
+            $parent_tab->add();
+        }
+
+        $tab = new Tab();
+        $tab->name = array();
+        foreach (Language::getLanguages(true) as $lang) {
+            $tab->name[$lang['id_lang']] = $this->trans('EG sticker', array(), $this->domain);
+        }
+        $tab->class_name = 'AdminEgStickerGeneral';
+        $tab->id_parent = (int) Tab::getIdFromClassName('AdminEgDigital');
+        $tab->module = $this->name;
+        $tab->icon = 'library_books';
+        $tab->add();
+
+        // Menage Module
+        $tab = new Tab();
+        $tab->name = array();
+        foreach (Language::getLanguages(true) as $lang) {
+            $tab->name[$lang['id_lang']] = $this->trans('Config', array(), $this->domain);
+        }
+        $tab->class_name = 'AdminEgConfSticker';
+        $tab->id_parent = (int)Tab::getIdFromClassName('AdminEgStickerGeneral');
+        $tab->module = $this->name;
+        $tab->add();
+
+        // Menage Sticker
+        $tab = new Tab();
+        $tab->name = array();
+        foreach (Language::getLanguages(true) as $lang) {
+            $tab->name[$lang['id_lang']] = $this->trans('Manage Sticker', array(), $this->domain);
+        }
+        $tab->class_name = 'AdminEgSticker';
+        $tab->id_parent = (int) Tab::getIdFromClassName('AdminEgStickerGeneral');
+        $tab->module = $this->name;
+        $tab->add();
+
+        return true;
+    }
+
+    /**
+     * Remove Tabs module in Dashboard
+     * @param $class_name string name Tab
+     * @return bool
+     * @throws
+     * @throws
+     */
+    public function removeTabs($class_name)
+    {
+        if ($tab_id = (int)Tab::getIdFromClassName($class_name)) {
+            $tab = new Tab($tab_id);
+            $tab->delete();
+        }
+        return true;
     }
 
     public function install()
     {
+        include(dirname(__FILE__) . '/sql/install.php');
+
         if (!parent::install() ||
-            !$this->registerHook('actionProductAdd') ||
-            !$this->registerHook('actionProductDelete') ||
-            !$this->registerHook('actionProductUpdate') ||
-            !$this->registerHook('displayAdminProductsExtra')
+            !$this->createTabs() ||
+            !$this->registerHook('actionAdminProductsControllerSaveBefore') ||
+            !$this->registerHook('displayAdminProductsExtra') ||
+            !$this->registerHook('displayProductListReviews')
+
         ) {
             return false;
         }
@@ -47,6 +121,10 @@ class EgSticker extends Module
 
     public function uninstall()
     {
+        include(dirname(__FILE__) . '/sql/uninstall.php');
+        $this->removeTabs('AdminEgConfSticker');
+        $this->removeTabs('AdminEgStickerGeneral');
+        $this->removeTabs('AdminEgSticker');
         if (!parent::uninstall()) {
             return false;
         }
@@ -58,186 +136,49 @@ class EgSticker extends Module
         return true;
     }
 
+    public function getContent()
+    {
+
+    }
+
     public function hookDisplayAdminProductsExtra($params)
     {
-        $id_product = (int)$params['id_product'];
+        $stickers = EgStickerClass::getStickers();
 
-        // Get the list of stickers
-        $stickersList = $this->getStickersList();
-
-        // Get the path to the module's image directory
-        $imgPath = $this->_path . 'views/img/';
-
-        // Assign the stickers list and image path to Smarty variables
         $this->context->smarty->assign(array(
-            'stickerslist' => $stickersList,
-            'imgPath' => $imgPath,
+            'stickers' => $stickers,
+            'imgPath' => $this->imgPath,
         ));
 
         // Return the HTML content
         return $this->display(__FILE__, 'views/templates/admin/admin_products_extra.tpl');
     }
 
-    protected function getStickersList()
+    public function hookActionAdminProductsControllerSaveBefore($params)
     {
-        // Adjust the path based on your module's structure
-        $stickerDir = _PS_MODULE_DIR_ . $this->name . '/views/img/';
+        $productSticker = new EgStickerClass();
+        $productSticker->id_product = (int) Tools::getValue('id_product');
+        $productSticker->name = Tools::getValue('sticker_name');
+        $productSticker->image = Tools::getValue('sticker_img');
 
-        // Get the list of sticker files in the img directory
-        $stickerFiles = scandir($stickerDir);
+        return $productSticker->save();
+    }
 
-        $stickersList = array();
-        foreach ($stickerFiles as $fileName) {
-            if ($fileName !== '.' && $fileName !== '..') {
-                $stickersList[] = array(
-                    'img' => $fileName,
-                );
-            }
-        }
+    public function hookDisplayProductListReviews($params)
+    {
+        $product = $params["product"];
 
-        return $stickersList;
+        //$productSticker = EgStickerClass::getProductSticker($product['id_product']);
+
+        $this->context->smarty->assign(array(
+         //   'sticker' => $productSticker,
+            'imgPath' => $this->imgPath,
+        ));
+
+        return $this->display(__FILE__, 'views/templates/hook/sticker.tpl');
     }
 
 
-    public function getContent()
-    {
-        if (Tools::isSubmit('submitUploadSticker')) {
-            $this->processUploadSticker();
-        }
 
-        if (Tools::isSubmit('deleteegsticker_img')) {
-            $this->context->controller->postProcess();
-        }
-
-        return $this->renderUploadSticker() . $this->renderListStickers();
-    }
-
-    protected function processUploadSticker()
-    {
-        $uploadedFile = $_FILES['STICKER_IMG'];
-
-        if ($uploadedFile['error'] === UPLOAD_ERR_OK) {
-            $tempFilePath = $uploadedFile['tmp_name'];
-            $destinationDir = _PS_MODULE_DIR_ . $this->name . '/views/img/';
-
-            if (!file_exists($destinationDir)) {
-                mkdir($destinationDir, 0775, true);
-            }
-
-            $destinationPath = $destinationDir . basename($uploadedFile['name']);
-
-            if (move_uploaded_file($tempFilePath, $destinationPath)) {
-                $this->context->controller->confirmations[] = $this->l('Sticker image uploaded successfully.');
-            } else {
-                $this->context->controller->errors[] = $this->l('Error uploading sticker image.');
-            }
-        } else {
-            $this->context->controller->errors[] = $this->l('Error uploading sticker image. Please check the file and try again.');
-        }
-    }
-
-    protected function renderUploadSticker()
-    {
-        $fields_form = array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('UPLOAD STICKER IMAGE'),
-                    'icon' => 'icon-upload'
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'file',
-                        'label' => $this->l('Upload new Sticker image'),
-                        'name' => 'STICKER_IMG',
-                        'desc' => $this->l('Upload a sticker image (transparent PNG)'),
-                        'lang' => true,
-                    ),
-                ),
-                'submit' => array(
-                    'title' => $this->l('Upload'),
-                    'icon' => 'process-icon-upload'
-                )
-            ),
-        );
-
-        $helper = new HelperForm();
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
-        $helper->default_form_language = $lang->id;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitUploadSticker';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-
-        return $helper->generateForm(array($fields_form));
-    }
-
-    protected function renderListStickers()
-    {
-        // Check if deletion action is triggered
-        if (Tools::isSubmit('delete' . $this->name . '_list')) {
-            $idToDelete = Tools::getValue('img');
-            $this->processDeleteSticker($idToDelete);
-        }
-
-        $stickerFiles = scandir(_PS_MODULE_DIR_ . $this->name . '/views/img/');
-
-        $data = array();
-        foreach ($stickerFiles as $fileName) {
-            if ($fileName !== '.' && $fileName !== '..') {
-                $data[] = array(
-                    'img' => $fileName,
-                    'picture' => '<img src="' . $this->_path . 'views/img/' . $fileName . '" style="max-width: 100px; max-height: 100px;" />',
-                );
-            }
-        }
-
-        $fields_list = array(
-            'img' => array(
-                'title' => $this->l('File Name'),
-                'align' => 'left',
-                'width' => 200,
-                'search' => true,
-            ),
-            'picture' => array(
-                'title' => $this->l('Image'),
-                'float' => true,
-                'align' => 'left',
-                'width' => 200,
-                'search' => false,
-            ),
-        );
-
-        $helper = new HelperList();
-        $helper->shopLinkType = '';
-        $helper->simple_header = false;
-        $helper->no_link = true;
-        $helper->actions = array('delete');
-        $helper->identifier = 'img';
-        $helper->title = $this->l('Stickers List');
-        $helper->table = $this->name . '_list';
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
-
-        return $helper->generateList($data, $fields_list);
-    }
-
-    protected function processDeleteSticker($fileName)
-    {
-        $filePath = _PS_MODULE_DIR_ . $this->name . '/views/img/' . $fileName;
-
-        if (file_exists($filePath)) {
-            unlink($filePath);
-            $this->context->controller->confirmations[] = $this->l('Sticker image deleted successfully.');
-        } else {
-            $this->context->controller->errors[] = $this->l('Error deleting sticker image. File not found.');
-        }
-    }
 
 }
