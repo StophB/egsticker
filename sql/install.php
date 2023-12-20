@@ -21,14 +21,14 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `'._DB_PREFIX_.'eg_sticker` (
 ) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8 ;';
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS `'._DB_PREFIX_.'eg_sticker_product` (
+    `id_eg_sticker_product` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_eg_sticker` int(10) unsigned NOT NULL,
     `id_product` int(10) unsigned NOT NULL,
-    PRIMARY KEY (`id_eg_sticker`, `id_product`),
-    FOREIGN KEY (`id_eg_sticker`) REFERENCES `'._DB_PREFIX_.'eg_sticker`(`id_eg_sticker`)
+    PRIMARY KEY (`id_eg_sticker_product`)
 ) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8 ;';
 
 foreach ($sql as $query) {
-    if (Db::getInstance()->execute($query) == false) {
-        return false;
+    if (Db::getInstance()->execute($query) === false) {
+        die('Error executing query: ' . $query);
     }
 }

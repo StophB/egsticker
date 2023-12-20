@@ -34,8 +34,9 @@ class EgStickerClass extends ObjectModel
         $query->select('eg.*');
         $query->from('eg_sticker', 'eg');
 
-        return Db::getInstance()->getRow($query);
+        return Db::getInstance()->executeS($query);
     }
+
 
     public static function showSticker($value)
     {

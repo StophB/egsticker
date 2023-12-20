@@ -37,8 +37,8 @@ class AdminEgStickerController extends ModuleAdminController
                 'search' => false,
             ),
             'name' => array(
-                'title' => $this->l('Title'),
-                'filter_key' => 'b!title',
+                'title' => $this->l('Name'),
+                'filter_key' => 'b!name',
             ),
         );
     }
@@ -113,12 +113,12 @@ class AdminEgStickerController extends ModuleAdminController
     {
 
         if ($this->action && $this->action == 'save') {
-            foreach (Language::getLanguages(true) as $lang) {
-                $image = $this->stUploadImage('image_'.$lang['id_lang']);
+
+                $image = $this->stUploadImage('image');
                 if (isset($image['image']) && !empty($image['image'] )) {
-                    $_POST['image_'.$lang['id_lang']]= $image['image'];
+                    $_POST['image_']= $image['image'];
                 }
-            }
+
         }
 
         if (Tools::isSubmit('forcedeleteImage') || Tools::getValue('deleteImage')) {
@@ -162,7 +162,7 @@ class AdminEgStickerController extends ModuleAdminController
                 array(
                     'type' => 'text',
                     'label' => $this->l('Name:'),
-                    'name' => 'title',
+                    'name' => 'name',
                     'desc' => $this->l('Please enter a Name for the sticker.'),
                 ),
                 array(

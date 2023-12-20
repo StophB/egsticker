@@ -5,6 +5,8 @@ if (!defined('_PS_VERSION_')) {
 }
 
 include_once(dirname(__FILE__).'/classes/EgStickerClass.php');
+include_once(dirname(__FILE__).'/classes/EgStickerProductClass.php');
+
 
 class EgSticker extends Module
 {
@@ -150,16 +152,14 @@ class EgSticker extends Module
             'imgPath' => $this->imgPath,
         ));
 
-        // Return the HTML content
         return $this->display(__FILE__, 'views/templates/admin/admin_products_extra.tpl');
     }
 
     public function hookActionAdminProductsControllerSaveBefore($params)
     {
-        $productSticker = new EgStickerClass();
+        $productSticker = new EgStickerProductClass();
+        $productSticker->id_eg_sticker = (int) Tools::getValue('sticker');
         $productSticker->id_product = (int) Tools::getValue('id_product');
-        $productSticker->name = Tools::getValue('sticker_name');
-        $productSticker->image = Tools::getValue('sticker_img');
 
         return $productSticker->save();
     }
@@ -168,7 +168,7 @@ class EgSticker extends Module
     {
         $product = $params["product"];
 
-        //$productSticker = EgStickerClass::getProductSticker($product['id_product']);
+        $stickers = EgStickerClass::getStickers();
 
         $this->context->smarty->assign(array(
          //   'sticker' => $productSticker,

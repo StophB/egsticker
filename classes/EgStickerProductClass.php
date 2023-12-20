@@ -12,6 +12,7 @@
 
 class EgStickerProductClass extends ObjectModel
 {
+    public $id_eg_sticker_product;
     public $id_eg_sticker;
     public $id_product;
 
@@ -20,10 +21,10 @@ class EgStickerProductClass extends ObjectModel
      */
     public static $definition = [
         'table' => 'eg_sticker_product',
-        'primary' => 'id_eg_sticker',
+        'primary' => 'id_eg_sticker_product',
         'fields' => [
-            '$id_product' => ['type' => self::TYPE_INT, 'validate' => 'isGenericName'],
-        ]
+            'id_eg_sticker' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
+            'id_product' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
+        ],
     ];
-
 }
